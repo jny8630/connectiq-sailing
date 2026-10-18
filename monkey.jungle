@@ -1,1 +1,4 @@
 project.manifest = manifest.xml
+
+# Exact-size launcher icon for Instinct 2X (avoids scaling warning)
+instinct2x.resourcePath = $(instinct2x.resourcePath);resources-launcher-62x62

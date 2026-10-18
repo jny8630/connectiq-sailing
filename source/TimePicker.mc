@@ -9,16 +9,22 @@ using Toybox.Lang;
 class TimePicker extends WatchUi.Picker {
 
     //! Constructor
-    public function initialize() {
-        System.println("TimePicker: initialize");
+    //! @param helm true to set the FC Cruise helm period, false for the race countdown
+    public function initialize(helm as Lang.Boolean) {
+        var label = "Time";
+        var factory = new TimeFactory(0, 30, 1, {});
+        var time = Application.getApp().getDefaultTimerCount();
+        if (helm) {
+            label = "Helm min";
+            factory = new TimeFactory(1, 60, 1, {});
+            time = Application.getApp().getHelmTimerCount();
+        }
         var title = new WatchUi.Text({
-            :text=>"Time",
+            :text=>label,
             :locX=>WatchUi.LAYOUT_HALIGN_CENTER,
             :locY=>WatchUi.LAYOUT_VALIGN_BOTTOM,
             :color=>Graphics.COLOR_WHITE});
 
-        var factory = new TimeFactory(0, 30, 1, {});
-        var time = Application.getApp().getDefaultTimerCount();
         var index = factory.getIndex(time);
 
         Picker.initialize({:title=>title, :pattern=>[factory], :defaults=>[index]});
@@ -27,7 +33,6 @@ class TimePicker extends WatchUi.Picker {
     //! Update the view
     //! @param dc Device Context
     public function onUpdate(dc as Graphics.Dc) as Void {
-        System.println("TimePicker: onUpdate");
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
         Picker.onUpdate(dc);

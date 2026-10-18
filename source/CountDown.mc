@@ -1,33 +1,36 @@
-using Toybox.System as Sys;
 using Toybox.Timer;
-using Toybox.Attention as Attention;
 using Toybox.WatchUi as Ui;
 using Toybox.Lang;
+using Toybox.Time as Time;
 
+//! Race start countdown.
+//!
+//! Buzz pattern (minutes and seconds left on the display):
+//!   4:00 x4, 3:00 x3, 2:00 x2, 1:00 x1, 0:30 x3, 0:20 x2, 0:10 x1.
+//!   Start (5:00) and the gun (0) are silent.
+//!
+//! Timing is unchanged from the original app: the display drops one second as
+//! soon as Start is pressed, so the gun comes ~1 s early (deliberately kept).
 class CountDown {
 
     var app = null;
 
     // Timers
-    var myTimer;
-    var timerEnd;
+    var myTimer = null;
+    var timerEnd = null;
 
     // Status
     var timerComplete = false;
     var timerRunning = false;
 
     // Properties
-    var secLeft;
-    var finalRingTime = 5000;
+    var secLeft = 0;
     var raceStartTime = null;
 
-    enum {
-        BUZZ_SHORT,
-        BUZZ_LONG
-    }
+    // How long "START" stays on screen after the gun (ms)
+    const START_SCREEN_MS = 5000;
 
     function initialize(sailingapp) {
-        Sys.println("countdown: initialize");
         app = sailingapp.weak();
     }
 
@@ -51,7 +54,13 @@ class CountDown {
         if (timerRunning == true) {
             return;
         }
-        secLeft = app.get().getDefaultTimerCount() * 60;
+        var sailingApp = app.get();
+        if (sailingApp == null) {
+            return;
+        }
+        // A new sequence clears any START screen still showing
+        stopStartScreenTimer();
+        secLeft = sailingApp.getDefaultTimerCount() * 60;
 
         updateTimer();
 
@@ -61,76 +70,55 @@ class CountDown {
         timerRunning = true;
     }
 
+    //! Number of short buzzes for the moment `s` seconds are left
+    function buzzesFor(s) {
+        if (s >= 60 && s <= 240 && (s % 60) == 0) {
+            return s / 60;          // 4:00 -> 4 ... 1:00 -> 1
+        }
+        if (s == 30) {
+            return 3;
+        }
+        if (s == 20) {
+            return 2;
+        }
+        if (s == 10) {
+            return 1;
+        }
+        return 0;
+    }
+
     function finishCountdown() {
-        app.get().addLap();
+        var sailingApp = app.get();
+        if (sailingApp != null) {
+            sailingApp.addLap();
+        }
         raceStartTime = Time.now();
-        endTimer();
+        stopMainTimer();
+        timerRunning = false;
+        // Show START for a few seconds, silently, then go back to speed
         timerComplete = true;
-        finalRing();
         timerEnd = new Timer.Timer();
-        timerEnd.start(method(:finalRing), 500, true );
+        timerEnd.start(method(:onStartScreenDone), START_SCREEN_MS, false);
+        Ui.requestUpdate();
     }
 
     function timerCallback() as Void {
-        var current_mode = app.get().getMode();
-        Sys.println("Current Mode: " + current_mode);
-        if (current_mode == MODE_TYPE_STANDARD){
-            if (secLeft > 1) {
-                if (secLeft < 11) {
-                    ring(BUZZ_SHORT, 1, true);
-                }
-                if ((secLeft-1) % 30 == 0) {
-                    ring(BUZZ_SHORT, 1, true);
-                    if ((secLeft-1) % 60 == 0) {
-                        ring(BUZZ_SHORT, 1, true);
-                    }
-                }
-                updateTimer();
-            } else {
-                finishCountdown();
-            }
-        } else if (current_mode == MODE_TYPE_DYNAMIC) {
-            var minutes = ((secLeft - 1) / 60).toNumber();
-            var tens_seconds = ((secLeft - 1) / 10).toNumber();
-            if (secLeft > 1) {
-                // Buzz the same number of minutes left
-                if (((secLeft -1) % 60 == 0) && (secLeft > 60)) {
-                    ring(BUZZ_SHORT, minutes, true);
-                }
-                // Buzz once on the 30 seconds
-                else if (((secLeft - 1) % 30 == 0) && (secLeft > 60)) {
-                    ring(BUZZ_SHORT, 1, true);
-                }
-                // Buzz the number of seconds
-                else if (((secLeft - 1) % 10 == 0) && (secLeft <= 60) && (secLeft > 11)) {
-                    if(tens_seconds > 4){
-                        // Hack because arrays max size 8
-                        ring(BUZZ_SHORT, 4, true);
-                        ring(BUZZ_SHORT, 1, true);
-                    }
-                    else{
-                        ring(BUZZ_SHORT, tens_seconds, true);
-                    }
-                }
-                // from 15 to 10 seconds, single short buzz
-                else if (((secLeft - 1) > 10) && ((secLeft - 1) < 16)) {
-                    ring(BUZZ_SHORT, 1, true);
-                }
-                // from 10 to 6 seconds, double short buzz
-                else if (((secLeft - 1) > 5) && ((secLeft - 1) < 11)) {
-                    ring(BUZZ_SHORT, 2, true);
-                }
-                // from 5 to 1 seconds, triple short buzz
-                else if (((secLeft - 1) > 0) && ((secLeft - 1) < 6)) {
-                    ring(BUZZ_SHORT, 3, true);
-                }
-                updateTimer();
-            } else {
-                finishCountdown();
-            }
+        var sailingApp = app.get();
+        if (sailingApp == null) {
+            stopMainTimer();
+            timerRunning = false;
+            return;
         }
-
-        WatchUi.requestUpdate();
+        if (secLeft > 1) {
+            // secLeft - 1 is what the display shows after this tick
+            var buzzes = buzzesFor(secLeft - 1);
+            if (buzzes > 0) {
+                sailingApp.buzzer.buzz(buzzes, true);
+            }
+            updateTimer();
+        } else {
+            finishCountdown();
+        }
     }
 
     function updateTimer() {
@@ -143,8 +131,7 @@ class CountDown {
             return;
         }
         secLeft = ((secLeft / 60) + 1) * 60;
-        Sys.println("fixTimeUp: " + (secLeft / 60 + 1));
-        ring(BUZZ_SHORT, 1, false);
+        buzzConfirm();
         Ui.requestUpdate();
     }
 
@@ -153,73 +140,51 @@ class CountDown {
             return;
         }
         secLeft = (secLeft / 60) * 60;
-        Sys.println("fixTimeDown: " + secLeft / 60);
-        ring(BUZZ_SHORT, 1, false);
+        buzzConfirm();
         Ui.requestUpdate();
     }
 
-    function endTimer() {
-        myTimer.stop();
+    //! Single vibrate (no tone) to confirm a sync press
+    function buzzConfirm() {
+        var sailingApp = app.get();
+        if (sailingApp != null) {
+            sailingApp.buzzer.buzz(1, false);
+        }
+    }
+
+    function onStartScreenDone() as Void {
+        timerEnd = null;
+        timerComplete = false;
+        Ui.requestUpdate();
+    }
+
+    function stopMainTimer() {
+        if (myTimer != null) {
+            myTimer.stop();
+            myTimer = null;
+        }
+    }
+
+    function stopStartScreenTimer() {
+        if (timerEnd != null) {
+            timerEnd.stop();
+            timerEnd = null;
+        }
+        timerComplete = false;
+    }
+
+    //! Stop/abort the countdown (GPS button while running, or mode switch)
+    function cancelTimer() {
+        stopMainTimer();
+        stopStartScreenTimer();
         timerRunning = false;
         Ui.requestUpdate();
     }
 
-    function ring(buzz_type, times, tone) {
-        if (app.get().getAlarms() == false) {
-            return;
-        }
-        Sys.println("ring: " + times);
-        var hasVibrate = (Attention has :vibrate);
-        var hasTone = (Attention has :ToneProfile);
-        if (buzz_type == BUZZ_SHORT) {
-            if (times > 5){
-                Sys.println("ring: called with too many iterations (max 4)");
-                return;
-            }
-            var vibeData = new [times * 2];
-            var toneData = new [times * 2];
-            for (var i = 0; i < (times * 2); i++) {
-                if (i % 2 == 0) {
-                    vibeData[i] = new Attention.VibeProfile(80, 200);
-                    if (hasTone) {
-                        toneData[i] = new Attention.ToneProfile(2500, 200);
-                    }
-                } else {
-                    vibeData[i] = new Attention.VibeProfile(0, 50);
-                    if (hasTone) {
-                    toneData[i] = new Attention.ToneProfile(0, 50);
-                    }
-                }
-            }
-            if (hasTone && tone == true) {
-                Attention.playTone({:toneProfile=>toneData});
-            }
-            if (hasVibrate) {
-                Attention.vibrate(vibeData);
-            }
-        } else if(buzz_type == BUZZ_LONG){
-            if (hasTone && tone == true) {
-                Attention.playTone({:toneProfile=>[new Attention.ToneProfile(2500, 500)]});
-            }
-            if (hasVibrate) {
-                var vibe_data = [new Attention.VibeProfile(50, 3000)];
-                Attention.vibrate(vibe_data);
-            }
-        }
-    }
-
-    function finalRing() as Void {
-        if (app.get().getAlarms() == false) {
-            return;
-        }
-        if (finalRingTime > 0) {
-            finalRingTime -= 500;
-            ring(BUZZ_LONG, 1, true);
-        } else {
-            finalRingTime = 5000;
-            timerComplete = false;
-            timerEnd.stop();
-        }
-        Ui.requestUpdate();
+    //! Stop all timers before the app is discarded
+    function shutdown() {
+        stopMainTimer();
+        stopStartScreenTimer();
+        timerRunning = false;
     }
 }

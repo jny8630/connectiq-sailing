@@ -19,7 +19,6 @@ class TimeFactory extends WatchUi.PickerFactory {
     //! @option options :font The font to use
     //! @option options :format The number format to display
     public function initialize(start as Lang.Number, stop as Lang.Number, increment as Lang.Number, options as {:format as Lang.String}) {
-        System.println("TimeFactory: initialize");
         PickerFactory.initialize();
 
         _start = start;
@@ -45,7 +44,13 @@ class TimeFactory extends WatchUi.PickerFactory {
     //! @param value The number to get the index of
     //! @return The index of the number
     public function getIndex(value as Lang.Number) as Lang.Number {
-        return (value / _increment) - _start;
+        var index = (value - _start) / _increment;
+        if (index < 0) {
+            index = 0;
+        } else if (index > getSize() - 1) {
+            index = getSize() - 1;
+        }
+        return index;
     }
 
     //! Generate a Drawable instance for an item

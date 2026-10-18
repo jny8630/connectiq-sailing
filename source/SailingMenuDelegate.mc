@@ -1,25 +1,25 @@
 using Toybox.WatchUi as Ui;
 using Toybox.Application as App;
-using Toybox.System as Sys;
 
 class SailingMenuDelegate extends Ui.MenuInputDelegate {
 
     function onMenuItem(item) {
-        Sys.println("menu item selected");
+        var app = App.getApp();
         if (item == :start_timer) {
-            Sys.println("start time pressed");
-            App.getApp().startTimer();
+            app.startTimer();
         } else if (item == :set_timer) {
-            Sys.println("set timer pressed");
             if (Ui has :Picker) {
-                Ui.pushView(new TimePicker(), new TimePickerDelegate(), Ui.SLIDE_UP);
+                var helm = app.isFcCruiseMode();
+                Ui.pushView(new TimePicker(helm), new TimePickerDelegate(helm), Ui.SLIDE_UP);
             }
         } else if (item == :set_alarms) {
-            Sys.println("set alarms pressed");
-            App.getApp().setAlarms(! App.getApp().getAlarms());
-        } else if (item == :set_mode) {
-            Sys.println("set mode pressed");
-            Ui.pushView(new Rez.Menus.ModeMenu(), new ModeMenuDelegate(), Ui.SLIDE_LEFT);
+            app.setAlarms(! app.getAlarms());
+        } else if (item == :switch_mode) {
+            if (app.isFcCruiseMode()) {
+                app.setSailingMode(SAILING_MODE_RACE);
+            } else {
+                app.setSailingMode(SAILING_MODE_FC_CRUISE);
+            }
         }
     }
 

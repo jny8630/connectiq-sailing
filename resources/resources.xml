@@ -1,15 +1,6 @@
 <resources>
     <bitmap id="LauncherIcon" filename="images/launcher_icon.svg" />
-    <menu id="MainMenu" title="Menu">
-        <menu-item id="start_timer" label="Start timer"></menu-item>
-        <menu-item id="set_timer" label="Set timer"></menu-item>
-        <menu-item id="set_alarms" label="Toggle alarms"></menu-item>
-        <menu-item id="set_mode" label="Configure Mode"></menu-item>"
-    </menu>
-    <menu id="ModeMenu" title="Mode">
-        <menu-item id="mode_standard" label="Standard"></menu-item>
-        <menu-item id="mode_dynamic" label="Dynamic"></menu-item>
-    </menu>
+    <!-- Main menu is built in code (SailingDelegate.buildMainMenu) -->
     <menu id="StopMenu" title="Exit">
         <menu-item id="save_btn" label="Save"></menu-item>
         <menu-item id="discard_btn" label="Discard"></menu-item>

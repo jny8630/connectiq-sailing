@@ -7,9 +7,12 @@ using Toybox.Lang;
 class TimePickerDelegate extends WatchUi.PickerDelegate {
 
     //! Constructor
-    public function initialize() {
-        System.println("TimePickerDelegate: initialize");
+    private var _helm as Lang.Boolean = false;
+
+    //! @param helm true when the picker sets the FC Cruise helm period
+    public function initialize(helm as Lang.Boolean) {
         PickerDelegate.initialize();
+        _helm = helm;
     }
 
     //! Handle a cancel event from the picker
@@ -23,8 +26,11 @@ class TimePickerDelegate extends WatchUi.PickerDelegate {
     //! @param values The values chosen in the picker
     //! @return true if handled, false otherwise
     public function onAccept(values as Lang.Array) as Lang.Boolean {
-        System.println("TimePickerDelegate: onAccept");
-        Application.getApp().setDefaultTimerCount(values[0]);
+        if (_helm) {
+            Application.getApp().setHelmTimerCount(values[0]);
+        } else {
+            Application.getApp().setDefaultTimerCount(values[0]);
+        }
         WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
         return true;
     }

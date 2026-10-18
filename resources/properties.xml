@@ -3,25 +3,26 @@
     <properties>
         <property id="time" type="number">5</property>
         <property id="alarms" type="boolean">true</property>
-        <property id="mode" type="number">0</property>
+        <property id="helmTime" type="number">20</property>
     </properties>
 
     <strings>
-        <string id="time_title">Countdown Timer(min)</string>
+        <string id="time_title">Race countdown (min)</string>
         <string id="alarms_title">Alarms</string>
-        <string id="mode_title">Mode</string>
+        <string id="helm_time_title">FC Cruise helm timer (min)</string>
     </strings>
 
     <settings>
         <setting propertyKey="@Properties.time" title="@Strings.time_title">
-            <settingConfig type="numeric" />
+            <settingConfig type="numeric" min="0" max="30" />
         </setting>
 
         <setting propertyKey="@Properties.alarms" title="@Strings.alarms_title">
             <settingConfig type="boolean" />
         </setting>
-        <setting propertyKey="@Properties.mode" title="@Strings.mode_title">
-            <settingConfig type="numeric" />
+
+        <setting propertyKey="@Properties.helmTime" title="@Strings.helm_time_title">
+            <settingConfig type="numeric" min="1" max="60" />
         </setting>
     </settings>
 </resources>
